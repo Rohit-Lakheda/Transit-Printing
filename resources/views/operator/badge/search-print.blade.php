@@ -130,25 +130,7 @@
             @endforelse
         </div>
 
-        @if($users->hasPages())
-            <div style="margin-top: 20px; display: flex; justify-content: center; gap: 10px;">
-                @if($users->onFirstPage())
-                    <span class="btn btn-secondary" style="opacity: 0.5; cursor: not-allowed;">Previous</span>
-                @else
-                    <a href="{{ $users->previousPageUrl() }}" class="btn btn-secondary">Previous</a>
-                @endif
-
-                <span style="padding: 8px 16px; display: inline-flex; align-items: center;">
-                    Page {{ $users->currentPage() }} of {{ $users->lastPage() }}
-                </span>
-
-                @if($users->hasMorePages())
-                    <a href="{{ $users->nextPageUrl() }}" class="btn btn-secondary">Next</a>
-                @else
-                    <span class="btn btn-secondary" style="opacity: 0.5; cursor: not-allowed;">Next</span>
-                @endif
-            </div>
-        @endif
+        {{ $users->links() }}
     @endif
 </div>
 @endsection

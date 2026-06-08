@@ -74,6 +74,85 @@
             background-color: #dc2626;
         }
 
+        /* Pagination */
+        .app-pagination {
+            margin-top: 16px;
+        }
+
+        .app-pagination__row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .app-pagination__btn {
+            padding: 8px 16px;
+            font-size: 13px;
+            min-width: 96px;
+            text-align: center;
+        }
+
+        .app-pagination__btn.is-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .app-pagination__info {
+            padding: 8px 12px;
+            font-size: 13px;
+            color: #4b5563;
+            white-space: nowrap;
+        }
+
+        .app-pagination__pages {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .app-pagination__page,
+        .app-pagination__ellipsis {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            height: 34px;
+            padding: 0 8px;
+            border-radius: 8px;
+            font-size: 13px;
+            text-decoration: none;
+            color: #1e40af;
+            border: 1px solid #dbeafe;
+            background: #fff;
+        }
+
+        .app-pagination__page:hover {
+            background: #eff6ff;
+            color: #1e3a8a;
+        }
+
+        .app-pagination__page.is-active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .app-pagination__ellipsis {
+            border: none;
+            background: transparent;
+            color: #6b7280;
+            min-width: auto;
+        }
+
         /* Cards */
         .card {
             background: white;

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Carbon\Carbon;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -22,6 +23,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Paginator::defaultView('vendor.pagination.app');
+        Paginator::defaultSimpleView('vendor.pagination.app');
+
         // Set default timezone for Carbon to match application timezone
         Carbon::setLocale('en');
         date_default_timezone_set(config('app.timezone'));
