@@ -82,41 +82,72 @@ class EBadgeLayoutController extends Controller
     /**
      * @return array{width_px:int,height_px:int,width_mm:float,height_mm:float}
      */
-    protected function resolveBadgeDimensions(Category $category): array
+    protected function dimensionsFromPixels(int $widthPx, int $heightPx): array
     {
-        $fallbackWidthMm = (float) $category->badge_width;
-        $fallbackHeightMm = (float) $category->badge_height;
-        $fallbackWidthPx = (int) round($fallbackWidthMm * 3.779527559);
-        $fallbackHeightPx = (int) round($fallbackHeightMm * 3.779527559);
-
-        if (!$category->e_badge_background_path) {
-            return [
-                'width_px' => $fallbackWidthPx,
-                'height_px' => $fallbackHeightPx,
-                'width_mm' => $fallbackWidthMm,
-                'height_mm' => $fallbackHeightMm,
-            ];
-        }
-
-        $bgPath = storage_path('app/public/' . $category->e_badge_background_path);
-        $bgSize = is_file($bgPath) ? @getimagesize($bgPath) : false;
-        if (!$bgSize || empty($bgSize[0]) || empty($bgSize[1])) {
-            return [
-                'width_px' => $fallbackWidthPx,
-                'height_px' => $fallbackHeightPx,
-                'width_mm' => $fallbackWidthMm,
-                'height_mm' => $fallbackHeightMm,
-            ];
-        }
-
-        $widthPx = (int) $bgSize[0];
-        $heightPx = (int) $bgSize[1];
-
         return [
             'width_px' => $widthPx,
             'height_px' => $heightPx,
             'width_mm' => round($widthPx * 25.4 / 96, 2),
             'height_mm' => round($heightPx * 25.4 / 96, 2),
+        ];
+    }
+
+    /**
+     * E-badge layout uses the uploaded background image size, not the physical print badge size.
+     *
+     * @return array{width_px:int,height_px:int,width_mm:float,height_mm:float}
+     */
+    protected function resolveBadgeDimensions(Category $category, ?Request $request = null): array
+    {
+        $candidates = [];
+
+        if ($request && $request->hasFile('background_image')) {
+            $uploadSize = @getimagesize($request->file('background_image')->getRealPath());
+            if ($uploadSize && !empty($uploadSize[0]) && !empty($uploadSize[1])) {
+                $candidates[] = $this->dimensionsFromPixels((int) $uploadSize[0], (int) $uploadSize[1]);
+            }
+        }
+
+        if ($category->e_badge_background_path) {
+            $bgPath = storage_path('app/public/' . $category->e_badge_background_path);
+            $bgSize = is_file($bgPath) ? @getimagesize($bgPath) : false;
+            if ($bgSize && !empty($bgSize[0]) && !empty($bgSize[1])) {
+                $candidates[] = $this->dimensionsFromPixels((int) $bgSize[0], (int) $bgSize[1]);
+            }
+        }
+
+        if ($request) {
+            $canvasWidthMm = $request->input('canvas_width_mm');
+            $canvasHeightMm = $request->input('canvas_height_mm');
+            if (is_numeric($canvasWidthMm) && is_numeric($canvasHeightMm)) {
+                $widthMm = (float) $canvasWidthMm;
+                $heightMm = (float) $canvasHeightMm;
+                if ($widthMm > 0 && $heightMm > 0) {
+                    $candidates[] = [
+                        'width_px' => (int) round($widthMm * 3.779527559),
+                        'height_px' => (int) round($heightMm * 3.779527559),
+                        'width_mm' => $widthMm,
+                        'height_mm' => $heightMm,
+                    ];
+                }
+            }
+        }
+
+        if ($candidates !== []) {
+            usort($candidates, fn (array $a, array $b) => ($b['width_mm'] * $b['height_mm']) <=> ($a['width_mm'] * $a['height_mm']));
+
+            return $candidates[0];
+        }
+
+        // Last resort only when no e-badge background exists yet.
+        $fallbackWidthMm = (float) $category->badge_width;
+        $fallbackHeightMm = (float) $category->badge_height;
+
+        return [
+            'width_px' => (int) round($fallbackWidthMm * 3.779527559),
+            'height_px' => (int) round($fallbackHeightMm * 3.779527559),
+            'width_mm' => $fallbackWidthMm,
+            'height_mm' => $fallbackHeightMm,
         ];
     }
 
@@ -152,9 +183,9 @@ class EBadgeLayoutController extends Controller
 
         $request->merge(['layouts' => $layoutsInput]);
 
-        $badgeDimensions = $this->resolveBadgeDimensions($categoryModel);
-        $maxElementWidth = max(50, (int) ceil($badgeDimensions['width_mm']));
-        $maxElementHeight = max(20, (int) ceil($badgeDimensions['height_mm']));
+        $badgeDimensions = $this->resolveBadgeDimensions($categoryModel, $request);
+        $maxElementWidth = max(100, (int) ceil($badgeDimensions['width_mm']));
+        $maxElementHeight = max(100, (int) ceil($badgeDimensions['height_mm']));
 
         $validated = $request->validate([
             'layouts' => 'required|array',

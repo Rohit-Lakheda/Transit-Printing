@@ -169,11 +169,22 @@
             @if(session('error'))
                 <div style="margin-bottom:12px;padding:10px 12px;background:#fef2f2;color:#b91c1c;border-radius:8px;font-size:13px;">{{ session('error') }}</div>
             @endif
+            @if($errors->any())
+                <div style="margin-bottom:12px;padding:10px 12px;background:#fef2f2;color:#b91c1c;border-radius:8px;font-size:13px;">
+                    <ul style="margin:0;padding-left:18px;">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             <form method="POST" action="{{ route('admin.e-badge.layouts.update', $categoryModel->Category) }}" enctype="multipart/form-data" id="layoutForm">
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="layouts" id="layoutsInput">
+                <input type="hidden" name="canvas_width_mm" id="canvasWidthMm" value="{{ $badgeWidthMm }}">
+                <input type="hidden" name="canvas_height_mm" id="canvasHeightMm" value="{{ $badgeHeightMm }}">
 
                 <div class="editor-grid-top">
                     <div class="card" style="margin-bottom:0;">
@@ -311,6 +322,13 @@ let dragState = null;
 
 function normalizeFontFamily(font) {
     return supportedPdfFonts.includes(font) ? font : 'Helvetica';
+}
+
+function syncCanvasDimensionFields() {
+    const widthInput = document.getElementById('canvasWidthMm');
+    const heightInput = document.getElementById('canvasHeightMm');
+    if (widthInput) widthInput.value = badgeWidthMm;
+    if (heightInput) heightInput.value = badgeHeightMm;
 }
 
 function updateDisplayScale() {
@@ -652,6 +670,7 @@ function renderControls() {
 }
 
 document.getElementById('layoutForm').addEventListener('submit', () => {
+    syncCanvasDimensionFields();
     const payload = [...elements].sort((a, b) => a.sequence - b.sequence).map((el, idx) => ({
         field_name: el.field_name,
         static_text_key: el.field_name.startsWith('Instruction') ? el.field_name : null,
@@ -684,6 +703,7 @@ if (backgroundInput) {
             badgeHeightPx = img.height;
             badgeWidthMm = Math.round(badgeWidthPx * 25.4 / 96 * 10) / 10;
             badgeHeightMm = Math.round(badgeHeightPx * 25.4 / 96 * 10) / 10;
+            syncCanvasDimensionFields();
             if (previewSizeLabelEl) {
                 previewSizeLabelEl.textContent = 'Size: ' + img.width + 'px × ' + img.height + 'px (' + badgeWidthMm + 'mm × ' + badgeHeightMm + 'mm) (Source: selected upload)';
             }
@@ -699,6 +719,7 @@ document.addEventListener('mousemove', onDragMove);
 document.addEventListener('mouseup', endDrag);
 window.addEventListener('resize', () => { updateDisplayScale(); });
 
+syncCanvasDimensionFields();
 rebuildFieldCheckboxes();
 renderPreview();
 renderButtons();
