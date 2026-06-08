@@ -10,6 +10,10 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class EBadgePdfService
 {
+    public function __construct(
+        protected EBadgeLayoutRenderService $layoutRenderer
+    ) {
+    }
     /**
      * Resolve e-badge page size from uploaded background image.
      *
@@ -112,15 +116,19 @@ class EBadgePdfService
 
         $pageSize = $this->resolvePageSize($category);
 
+        $renderedElements = $this->layoutRenderer->buildRenderedElements(
+            $user,
+            $layoutSettings,
+            $pageSize['width_mm'],
+            $pageSize['height_mm']
+        );
+
         $pdf = Pdf::loadView('admin.e-badge.pdf.single', [
-            'userDetail' => $user,
             'category' => $category,
-            'layoutSettings' => $layoutSettings,
+            'renderedElements' => $renderedElements,
             'qrCode' => $qrCodeDataUri,
             'pageWidthPt' => $pageSize['width_pt'],
             'pageHeightPt' => $pageSize['height_pt'],
-            'pageWidthPx' => $pageSize['width_px'],
-            'pageHeightPx' => $pageSize['height_px'],
             'pageWidthMm' => $pageSize['width_mm'],
             'pageHeightMm' => $pageSize['height_mm'],
         ])->setPaper([

@@ -15,7 +15,6 @@
         html, body {
             margin: 0;
             padding: 0;
-            font-family: 'Comfortaa', sans-serif;
             width: {{ $pageWidthMm }}mm;
             height: {{ $pageHeightMm }}mm;
             overflow: hidden;
@@ -34,8 +33,8 @@
             top: 0;
             left: 0;
             z-index: 1;
-            width: 100%;
-            height: 100%;
+            width: {{ $pageWidthMm }}mm;
+            height: {{ $pageHeightMm }}mm;
         }
         .item {
             position: absolute;
@@ -45,12 +44,22 @@
             line-height: 1.15;
             box-sizing: border-box;
         }
+        .item-qr {
+            padding: 0;
+            display: block;
+        }
+        .item-qr-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .item-qr-table td {
+            padding: 0;
+            vertical-align: top;
+        }
     </style>
 </head>
 <body>
 @php
-    $mmToPx = 3.779527559;
-    $sorted = $layoutSettings->sortBy('sequence')->values();
     $bgPath = $category->e_badge_background_path ? storage_path('app/public/' . $category->e_badge_background_path) : null;
     $bgDataUri = null;
     if ($bgPath && file_exists($bgPath)) {
@@ -97,83 +106,47 @@
         <img
             src="{{ $bgDataUri }}"
             alt="Background"
-            width="{{ $pageWidthPx }}"
-            height="{{ $pageHeightPx }}"
             style="position:absolute;top:0;left:0;z-index:0;display:block;width:{{ $pageWidthMm }}mm;height:{{ $pageHeightMm }}mm;"
         >
     @endif
     <div class="content">
-        @foreach($sorted as $layout)
-            @php
-                $field = $layout->field_name;
-                $marginTopPx = ((float) ($layout->margin_top ?? 0)) * $mmToPx;
-                $marginLeftPx = ((float) ($layout->margin_left ?? 0)) * $mmToPx;
-                $marginRightPx = ((float) ($layout->margin_right ?? 0)) * $mmToPx;
-                $align = $layout->text_align ?? 'left';
-                $fontFamily = $layout->font_family ?? 'Helvetica';
-                $supportedFontFamilies = ['Helvetica', 'Times-Roman', 'Courier'];
-                if (!in_array($fontFamily, $supportedFontFamilies, true)) {
-                    $fontFamily = 'Helvetica';
-                }
-                $fontWeight = $layout->font_weight ?? 'normal';
-                $color = $layout->color ?? '#000000';
-                $fontSizePx = ((float) ($layout->font_size ?? 3.7)) * $mmToPx;
-                $elementWidthMm = (float) ($layout->width ?? 0);
-                $hasCustomWidth = $elementWidthMm > 0;
-                $elementWidthPx = $hasCustomWidth ? ($elementWidthMm * $mmToPx) : null;
-
-                $value = '';
-                if ($field === 'QRcode') {
-                    $value = '';
-                } elseif ($field === 'Category') {
-                    $value = $userDetail->Category ?? '';
-                } elseif (str_starts_with($field, 'Instruction')) {
-                    $value = $layout->static_text_value ?? '';
-                } else {
-                    $value = $userDetail->{$field} ?? '';
-                }
-            @endphp
-
-            @if($field === 'QRcode')
+        @foreach($renderedElements as $element)
+            @if(($element['type'] ?? '') === 'qr' && $qrCode)
                 @php
-                    $qrWidthPx = ((float) ($layout->width ?? 20)) * $mmToPx;
-                    $qrHeightPx = ((float) ($layout->height ?? 20)) * $mmToPx;
-                    $qrZoneWidthPx = max(0, $pageWidthPx - $marginLeftPx - $marginRightPx);
-                    $qrJustify = match ($align) {
+                    $align = $element['text_align'] ?? 'left';
+                    $qrCellAlign = match ($align) {
                         'center' => 'center',
-                        'right' => 'flex-end',
-                        default => 'flex-start',
+                        'right' => 'right',
+                        default => 'left',
                     };
                 @endphp
-                @if($qrCode)
-                    <div class="item" style="top: {{ $marginTopPx }}px; left: {{ $marginLeftPx }}px; width: {{ $qrZoneWidthPx }}px; height: {{ $qrHeightPx }}px; display: flex; justify-content: {{ $qrJustify }}; align-items: flex-start;">
-                        <img
-                            src="{{ $qrCode }}"
-                            alt="QR"
-                            width="{{ round($qrWidthPx) }}"
-                            height="{{ round($qrHeightPx) }}"
-                            style="width: {{ $qrWidthPx }}px; height: {{ $qrHeightPx }}px; object-fit: contain; display: block; flex-shrink: 0;"
-                        >
-                    </div>
-                @endif
-            @elseif($value !== '')
+                <div class="item item-qr"
+                     style="top: {{ $element['top_mm'] }}mm; left: {{ $element['left_mm'] }}mm; width: {{ $element['zone_width_mm'] }}mm; height: {{ $element['qr_height_mm'] }}mm;">
+                    <table class="item-qr-table" style="width: {{ $element['zone_width_mm'] }}mm;">
+                        <tr>
+                            <td align="{{ $qrCellAlign }}">
+                                <img
+                                    src="{{ $qrCode }}"
+                                    alt="QR"
+                                    style="width: {{ $element['qr_width_mm'] }}mm; height: {{ $element['qr_height_mm'] }}mm; display: inline-block;"
+                                >
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            @elseif(($element['type'] ?? '') === 'text')
                 <div class="item"
                      style="
-                        top: {{ $marginTopPx }}px;
-                        left: {{ $marginLeftPx }}px;
-                        text-align: {{ $align }};
-                        font-family: '{{ $fontFamily }}', sans-serif;
-                        font-weight: {{ $fontWeight }};
-                        color: {{ $color }};
-                        font-size: {{ $fontSizePx }}px;
-                        @if($hasCustomWidth)
-                        width: {{ $elementWidthPx }}px;
-                        max-width: {{ max(0, $pageWidthPx - $marginLeftPx) }}px;
-                        @else
-                        width: {{ max(0, $pageWidthPx - $marginLeftPx) }}px;
-                        @endif
+                        top: {{ $element['top_mm'] }}mm;
+                        left: {{ $element['left_mm'] }}mm;
+                        width: {{ $element['width_mm'] }}mm;
+                        text-align: {{ $element['text_align'] ?? 'left' }};
+                        font-family: '{{ $element['font_family'] ?? 'Helvetica' }}', sans-serif;
+                        font-weight: {{ $element['font_weight'] ?? 'normal' }};
+                        color: {{ $element['color'] ?? '#000000' }};
+                        font-size: {{ $element['font_size_mm'] }}mm;
                      ">
-                    {{ $value }}
+                    {{ $element['value'] }}
                 </div>
             @endif
         @endforeach
