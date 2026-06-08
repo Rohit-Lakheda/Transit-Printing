@@ -70,7 +70,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card" id="whatsapp-config">
             <div class="card-header">
                 <h2 class="card-title" style="font-size:20px;">WhatsApp Provider Configuration</h2>
             </div>
@@ -85,6 +85,9 @@
                     @php
                         $wa = $activeWhatsappConfig;
                         $waProvider = old('provider', optional($wa)->provider ?? 'aisensy');
+                        $defaultMediaUrlParam = '{{BadgeDownloadLink}}';
+                        $defaultMediaFilename = 'e_badge_{{RegID}}.pdf';
+                        $defaultAttributesPlaceholder = '{"regid": "{{RegID}}", "category": "{{Category}}"}';
                     @endphp
 
                     <div class="form-group">
@@ -138,11 +141,11 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Media URL placeholder</label>
-                            <input type="text" name="media_url_param" class="form-control" value="{{ old('media_url_param', optional($wa)->media_url_param ?? '{{BadgeDownloadLink}}') }}">
+                            <input type="text" name="media_url_param" class="form-control" value="{{ old('media_url_param', optional($wa)->media_url_param ?? $defaultMediaUrlParam) }}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Media filename</label>
-                            <input type="text" name="media_filename" class="form-control" value="{{ old('media_filename', optional($wa)->media_filename ?? 'e_badge_{{RegID}}.pdf') }}">
+                            <input type="text" name="media_filename" class="form-control" value="{{ old('media_filename', optional($wa)->media_filename ?? $defaultMediaFilename) }}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Tags (comma-separated or JSON array)</label>
@@ -150,7 +153,7 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Attributes (JSON object)</label>
-                            <textarea name="attributes_json" rows="3" class="form-control" placeholder='{"regid": "{{RegID}}", "category": "{{Category}}"}'>{{ old('attributes_json', $wa && $wa->attributes ? json_encode($wa->attributes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : '') }}</textarea>
+                            <textarea name="attributes_json" rows="3" class="form-control" placeholder="{{ $defaultAttributesPlaceholder }}">{{ old('attributes_json', $wa && $wa->attributes ? json_encode($wa->attributes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) : '') }}</textarea>
                         </div>
                     </div>
 

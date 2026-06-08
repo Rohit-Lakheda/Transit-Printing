@@ -967,6 +967,7 @@
                             </button>
                             <ul class="admin-dropdown-menu">
                                 <li><a href="{{ route('admin.e-badge.settings') }}">E-Badge Settings</a></li>
+                                <li><a href="{{ route('admin.e-badge.settings') }}#whatsapp-config">WhatsApp Settings</a></li>
                                 <li><a href="{{ route('admin.e-badge.layouts.index') }}">E-Badge Layouts</a></li>
                                 <li><a href="{{ route('admin.e-badge.send.index') }}">Send E-Badges</a></li>
                             </ul>
