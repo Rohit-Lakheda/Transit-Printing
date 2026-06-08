@@ -79,6 +79,47 @@ class EBadgeLayoutController extends Controller
         return view('admin.e-badge.layouts.index', compact('categories'));
     }
 
+    /**
+     * @return array{width_px:int,height_px:int,width_mm:float,height_mm:float}
+     */
+    protected function resolveBadgeDimensions(Category $category): array
+    {
+        $fallbackWidthMm = (float) $category->badge_width;
+        $fallbackHeightMm = (float) $category->badge_height;
+        $fallbackWidthPx = (int) round($fallbackWidthMm * 3.779527559);
+        $fallbackHeightPx = (int) round($fallbackHeightMm * 3.779527559);
+
+        if (!$category->e_badge_background_path) {
+            return [
+                'width_px' => $fallbackWidthPx,
+                'height_px' => $fallbackHeightPx,
+                'width_mm' => $fallbackWidthMm,
+                'height_mm' => $fallbackHeightMm,
+            ];
+        }
+
+        $bgPath = storage_path('app/public/' . $category->e_badge_background_path);
+        $bgSize = is_file($bgPath) ? @getimagesize($bgPath) : false;
+        if (!$bgSize || empty($bgSize[0]) || empty($bgSize[1])) {
+            return [
+                'width_px' => $fallbackWidthPx,
+                'height_px' => $fallbackHeightPx,
+                'width_mm' => $fallbackWidthMm,
+                'height_mm' => $fallbackHeightMm,
+            ];
+        }
+
+        $widthPx = (int) $bgSize[0];
+        $heightPx = (int) $bgSize[1];
+
+        return [
+            'width_px' => $widthPx,
+            'height_px' => $heightPx,
+            'width_mm' => round($widthPx * 25.4 / 96, 2),
+            'height_mm' => round($heightPx * 25.4 / 96, 2),
+        ];
+    }
+
     public function edit(string $category)
     {
         $categoryModel = Category::where('Category', $category)->firstOrFail();
@@ -92,7 +133,9 @@ class EBadgeLayoutController extends Controller
             $visibleFields = ['Category', 'RegID', 'Name', 'QRcode'];
         }
 
-        return view('admin.e-badge.layouts.edit', compact('categoryModel', 'layoutSettings', 'visibleFields'));
+        $badgeDimensions = $this->resolveBadgeDimensions($categoryModel);
+
+        return view('admin.e-badge.layouts.edit', compact('categoryModel', 'layoutSettings', 'visibleFields', 'badgeDimensions'));
     }
 
     public function update(Request $request, string $category)
@@ -109,22 +152,26 @@ class EBadgeLayoutController extends Controller
 
         $request->merge(['layouts' => $layoutsInput]);
 
+        $badgeDimensions = $this->resolveBadgeDimensions($categoryModel);
+        $maxElementWidth = max(50, (int) ceil($badgeDimensions['width_mm']));
+        $maxElementHeight = max(20, (int) ceil($badgeDimensions['height_mm']));
+
         $validated = $request->validate([
             'layouts' => 'required|array',
             'layouts.*.field_name' => 'required|string',
             'layouts.*.static_text_key' => 'nullable|string',
             'layouts.*.static_text_value' => 'nullable|string',
-            'layouts.*.margin_top' => 'nullable|numeric|min:0',
-            'layouts.*.margin_left' => 'nullable|numeric|min:0',
-            'layouts.*.margin_right' => 'nullable|numeric|min:0',
+            'layouts.*.margin_top' => 'nullable|numeric|min:0|max:' . $maxElementHeight,
+            'layouts.*.margin_left' => 'nullable|numeric|min:0|max:' . $maxElementWidth,
+            'layouts.*.margin_right' => 'nullable|numeric|min:0|max:' . $maxElementWidth,
             'layouts.*.sequence' => 'required|integer|min:0',
             'layouts.*.text_align' => 'required|string|in:left,center,right',
             'layouts.*.font_family' => 'required|string|in:Helvetica,Times-Roman,Courier',
             'layouts.*.font_weight' => 'required|string|in:normal,bold',
             'layouts.*.color' => 'required|string',
             'layouts.*.font_size' => 'nullable|numeric|min:1|max:50',
-            'layouts.*.width' => 'nullable|numeric|min:5|max:200',
-            'layouts.*.height' => 'nullable|numeric|min:5|max:100',
+            'layouts.*.width' => 'nullable|numeric|min:5|max:' . $maxElementWidth,
+            'layouts.*.height' => 'nullable|numeric|min:5|max:' . $maxElementHeight,
             'background_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:4096',
             'remove_background' => 'nullable|boolean',
         ]);

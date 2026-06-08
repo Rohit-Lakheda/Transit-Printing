@@ -38,12 +38,12 @@
             height: 100%;
         }
         .item {
-            width: 100%;
-            max-width: 100%;
+            position: absolute;
             padding: 0 1mm;
             word-break: break-word;
             overflow-wrap: break-word;
-            line-height: 1;
+            line-height: 1.15;
+            box-sizing: border-box;
         }
     </style>
 </head>
@@ -138,33 +138,39 @@
                 @php
                     $qrWidthPx = ((float) ($layout->width ?? 20)) * $mmToPx;
                     $qrHeightPx = ((float) ($layout->height ?? 20)) * $mmToPx;
+                    $qrZoneWidthPx = max(0, $pageWidthPx - $marginLeftPx - $marginRightPx);
+                    $qrJustify = match ($align) {
+                        'center' => 'center',
+                        'right' => 'flex-end',
+                        default => 'flex-start',
+                    };
                 @endphp
                 @if($qrCode)
-                    <div class="item" style="margin-top: {{ $marginTopPx }}px; margin-left: {{ $marginLeftPx }}px; margin-right: {{ $marginRightPx }}px; text-align: {{ $align }};">
+                    <div class="item" style="top: {{ $marginTopPx }}px; left: {{ $marginLeftPx }}px; width: {{ $qrZoneWidthPx }}px; height: {{ $qrHeightPx }}px; display: flex; justify-content: {{ $qrJustify }}; align-items: flex-start;">
                         <img
                             src="{{ $qrCode }}"
                             alt="QR"
                             width="{{ round($qrWidthPx) }}"
                             height="{{ round($qrHeightPx) }}"
-                            style="width: {{ $qrWidthPx }}px; height: {{ $qrHeightPx }}px; object-fit: contain; display: inline-block;"
+                            style="width: {{ $qrWidthPx }}px; height: {{ $qrHeightPx }}px; object-fit: contain; display: block; flex-shrink: 0;"
                         >
                     </div>
                 @endif
             @elseif($value !== '')
                 <div class="item"
                      style="
-                        margin-top: {{ $marginTopPx }}px;
-                        margin-left: {{ $marginLeftPx }}px;
-                        margin-right: {{ $marginRightPx }}px;
+                        top: {{ $marginTopPx }}px;
+                        left: {{ $marginLeftPx }}px;
                         text-align: {{ $align }};
                         font-family: '{{ $fontFamily }}', sans-serif;
                         font-weight: {{ $fontWeight }};
                         color: {{ $color }};
                         font-size: {{ $fontSizePx }}px;
-                        line-height: 1;
                         @if($hasCustomWidth)
                         width: {{ $elementWidthPx }}px;
-                        max-width: {{ $pageWidthPx }}px;
+                        max-width: {{ max(0, $pageWidthPx - $marginLeftPx) }}px;
+                        @else
+                        width: {{ max(0, $pageWidthPx - $marginLeftPx) }}px;
                         @endif
                      ">
                     {{ $value }}
