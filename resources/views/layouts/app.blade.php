@@ -1002,7 +1002,13 @@
     @if (request()->is('operator', 'operator/*'))
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('{{ asset('operator-sw.js') }}').catch(function () {});
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                registrations.forEach(function (registration) {
+                    if (registration.active && registration.active.scriptURL.includes('operator-sw.js')) {
+                        registration.unregister();
+                    }
+                });
+            });
         }
     </script>
     @endif

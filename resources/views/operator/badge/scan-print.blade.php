@@ -46,10 +46,6 @@
         <h1 class="card-title" style="text-align: center;">Scan &amp; Print Badge</h1>
     </div>
 
-    <div id="offline-print-status" style="padding: 0 24px 12px; font-size: 13px; color: #6b7280; text-align: center;">
-        Offline mode: checking...
-    </div>
-
     <div style="padding: 0 24px 24px;">
         <div id="qr-reader-print" class="{{ ($printScanningType ?? 'device') === 'device' ? 'hidden-by-mode' : '' }}"></div>
         <div id="camera-scan-hint" class="{{ ($printScanningType ?? 'device') === 'device' ? 'hidden-by-mode' : '' }}">
@@ -87,7 +83,6 @@
         @endif
 
         <div style="text-align: center; margin-top: 20px;">
-            <a href="{{ route('operator.scanning.select-location') }}" class="btn btn-secondary" style="margin-right: 8px;">Download Event Data</a>
             <a href="{{ route('operator.home') }}" class="btn btn-secondary">Go to Home</a>
         </div>
     </div>
@@ -96,64 +91,18 @@
 
 @push('scripts')
 <script src="https://unpkg.com/html5-qrcode" defer></script>
-<script src="{{ asset('js/vendor/qrcode-generator.js') }}"></script>
-<script src="{{ asset('js/offline/indexed-db.js') }}"></script>
-<script src="{{ asset('js/offline/connectivity.js') }}"></script>
-<script src="{{ asset('js/offline/pull-merge.js') }}"></script>
-<script src="{{ asset('js/offline/local-print.js') }}"></script>
-<script src="{{ asset('js/offline/print-renderer.js') }}"></script>
-<script src="{{ asset('js/offline/sync-engine.js') }}"></script>
-<script src="{{ asset('js/offline/print-bridge.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const statusEl = document.getElementById('offline-print-status');
     const form = document.getElementById('searchForm');
     const input = document.getElementById('regidInput');
     const statusMsg = document.getElementById('print-status-msg');
     const printScanningType = @json($printScanningType ?? 'device');
     const qrRegionId = 'qr-reader-print';
+    const printUrl = @json(route('operator.badge.print'));
     let isPrinting = false;
     let lastScannedCode = null;
     let lastScannedTime = 0;
     const DUPLICATE_WINDOW_MS = 1500;
-
-    const syncHandle = EventOfflineSyncEngine.start({
-        deviceId: localStorage.getItem('event_offline_device_id') || 'dev-print',
-        csrfToken: '{{ csrf_token() }}',
-        syncToken: @json(config('offline.sync_token')),
-        intervalSeconds: {{ (int) config('offline.sync_interval_seconds', 20) }},
-        maxRetries: {{ (int) config('offline.max_sync_retries', 8) }},
-        endpoints: {
-            health: '/operator/offline/health',
-            pushScans: '/operator/offline/push-scans',
-            pushPrints: '/operator/offline/push-prints',
-            pushRegistrations: '/operator/offline/push-registrations',
-            pull: '/operator/offline/pull',
-            pullLocationScans: '/operator/offline/pull-location-scans',
-        },
-    });
-
-    if (@json(config('offline.lan_base_url'))) {
-        EventOfflineConnectivity.setLanBaseUrl(@json(config('offline.lan_base_url')));
-    }
-    EventOfflineConnectivity.setPreferLan(@json((bool) config('offline.prefer_lan') || config('offline.mode') === 'lan_first'));
-
-    EventOfflinePrintBridge.init({
-        csrfToken: '{{ csrf_token() }}',
-        syncNow: syncHandle.syncNow,
-        endpoints: {
-            printPayload: '/operator/offline/print-payload',
-        },
-    });
-
-    EventOfflineConnectivity.startMonitor('/operator/offline/health', {{ (int) config('offline.sync_interval_seconds', 20) }});
-    EventOfflineConnectivity.onChange(async (state) => {
-        const eventId = await EventOfflineDB.getMeta('event_id');
-        const pending = await EventOfflineSyncEngine.countPending();
-        statusEl.textContent = (eventId ? 'Event #' + eventId + ' cached. ' : 'No event cached - download first. ') +
-            (state.online ? 'Online (' + state.mode + '). ' : 'Offline. ') +
-            'Pending sync: ' + pending;
-    });
 
     function setStatus(message, type) {
         statusMsg.textContent = message || '';
@@ -171,22 +120,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return trimmed;
     }
 
-    async function printRegid(regid) {
+    function printRegid(regid) {
         if (!regid || isPrinting) return;
         isPrinting = true;
-        setStatus('Preparing print...', '');
-
-        const result = await EventOfflinePrintBridge.printRegid(regid);
-        if (!result.ok) {
-            setStatus(result.message, 'error');
-        } else {
-            setStatus('Print dialog opened. Stay on this page to scan next badge.', 'success');
-            if (input) {
-                input.value = '';
-                if (printScanningType === 'device') input.focus();
-            }
-        }
-        isPrinting = false;
+        setStatus('Opening print page...', '');
+        window.location.href = printUrl + '?regid=' + encodeURIComponent(regid);
     }
 
     async function handleDetectedCode(rawText) {

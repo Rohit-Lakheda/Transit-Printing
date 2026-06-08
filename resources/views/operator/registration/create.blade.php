@@ -40,58 +40,7 @@
     </form>
 </div>
 
-<div id="offline-reg-status" style="max-width:800px;margin:12px auto;padding:12px;background:#f0fdf4;border-radius:8px;font-size:13px;color:#166534;display:none;"></div>
-
 @push('scripts')
-<script src="{{ asset('js/offline/indexed-db.js') }}"></script>
-<script src="{{ asset('js/offline/connectivity.js') }}"></script>
-<script src="{{ asset('js/offline/local-registration.js') }}"></script>
-<script src="{{ asset('js/offline/sync-engine.js') }}"></script>
-<script>
-    const registrationForm = document.getElementById('registrationForm');
-    const offlineRegStatus = document.getElementById('offline-reg-status');
-
-    EventOfflineSyncEngine.start({
-        deviceId: localStorage.getItem('event_offline_device_id') || 'dev-reg',
-        csrfToken: '{{ csrf_token() }}',
-        syncToken: @json(config('offline.sync_token')),
-        intervalSeconds: {{ (int) config('offline.sync_interval_seconds', 20) }},
-        maxRetries: {{ (int) config('offline.max_sync_retries', 8) }},
-        endpoints: {
-            health: '/operator/offline/health',
-            pushScans: '/operator/offline/push-scans',
-            pushPrints: '/operator/offline/push-prints',
-            pushRegistrations: '/operator/offline/push-registrations',
-            pull: '/operator/offline/pull',
-            pullLocationScans: '/operator/offline/pull-location-scans',
-        },
-    });
-
-    registrationForm.addEventListener('submit', async function (e) {
-        const online = navigator.onLine;
-        const eventId = await EventOfflineDB.getMeta('event_id');
-        if (online || !eventId) return;
-
-        e.preventDefault();
-        const formData = new FormData(registrationForm);
-        const data = {};
-        formData.forEach((val, key) => { if (key !== '_token') data[key] = val; });
-
-        if (!data.Category || !data.Name) {
-            alert('Category and Name are required.');
-            return;
-        }
-
-        try {
-            const record = await EventOfflineRegistration.saveRegistration(data);
-            offlineRegStatus.style.display = 'block';
-            offlineRegStatus.textContent = 'Saved offline as ' + record.RegID + '. Will sync when online. Redirecting to print...';
-            window.location.href = '{{ url('operator/badge/print') }}?regid=' + encodeURIComponent(record.RegID);
-        } catch (err) {
-            alert('Offline save failed: ' + err.message);
-        }
-    });
-</script>
 <script>
     const categorySelect = document.getElementById('categorySelect');
     const dynamicFields = document.getElementById('dynamicFields');

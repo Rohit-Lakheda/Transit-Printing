@@ -72,35 +72,6 @@
     #scan-counter .stat-rejected {
         color: #ef4444;
     }
-    #connection-status {
-        margin-top: 6px;
-        font-size: 12px;
-    }
-    #connection-status.online {
-        color: #10b981;
-    }
-    #connection-status.offline {
-        color: #fbbf24;
-    }
-    #pending-uploads-text {
-        font-size: 12px;
-        margin-top: 2px;
-    }
-    #sync-offline-btn {
-        margin-top: 6px;
-        font-size: 12px;
-        padding: 4px 8px;
-        border-radius: 4px;
-        border: none;
-        background-color: #3b82f6;
-        color: #ffffff;
-        cursor: pointer;
-        width: 100%;
-    }
-    #sync-offline-btn:disabled {
-        opacity: 0.6;
-        cursor: default;
-    }
 
     #input-container {
         position: fixed;
@@ -296,10 +267,6 @@
                 <span id="rejected-count-value" class="stat-value stat-rejected">{{ $todayRejectedCount }}</span>
             </div>
         </div>
-        <div id="connection-status" class="online">Status: Online</div>
-        <div id="sync-mode-text" style="font-size:11px;margin-top:4px;opacity:0.9;">Mode: —</div>
-        <div id="pending-uploads-text">Pending Uploads: <span id="pending-uploads-count">0</span></div>
-        <button id="sync-offline-btn" type="button">Sync Offline Scans</button>
     </div>
 
     <!-- Input Field - Always visible and accessible -->
@@ -344,13 +311,6 @@
 
 @push('scripts')
 <script src="https://unpkg.com/html5-qrcode" defer></script>
-<script src="{{ asset('js/offline/indexed-db.js') }}"></script>
-<script src="{{ asset('js/offline/connectivity.js') }}"></script>
-<script src="{{ asset('js/offline/pull-merge.js') }}"></script>
-<script src="{{ asset('js/offline/local-scan-validator.js') }}"></script>
-<script src="{{ asset('js/offline/bootstrap.js') }}"></script>
-<script src="{{ asset('js/offline/sync-engine.js') }}"></script>
-<script src="{{ asset('js/offline/operator-bridge.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Ensure html5-qrcode is loaded
@@ -378,47 +338,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const scanCountValue = document.getElementById('scan-count-value');
     const approvedCountValue = document.getElementById('approved-count-value');
     const rejectedCountValue = document.getElementById('rejected-count-value');
-    const connectionStatusEl = document.getElementById('connection-status');
-    const pendingUploadsTextEl = document.getElementById('pending-uploads-text');
-    const pendingUploadsCountEl = document.getElementById('pending-uploads-count');
-    const syncOfflineBtn = document.getElementById('sync-offline-btn');
     const qrRegionId = 'qr-reader';
     const scanningType = @json($scanningType ?? 'camera');
     const inputContainer = document.getElementById('input-container');
     const qrReaderEl = document.getElementById('qr-reader');
-    const syncModeTextEl = document.getElementById('sync-mode-text');
-    const locationId = @json($location->id);
-    const eventId = @json($location->event_id ?? 1);
-    let offlineReady = false;
-
-    if (window.EventOfflineOperator) {
-        EventOfflineOperator.init({
-            csrfToken: '{{ csrf_token() }}',
-            syncToken: @json(config('offline.sync_token')),
-            intervalSeconds: {{ (int) config('offline.sync_interval_seconds', 20) }},
-            maxRetries: {{ (int) config('offline.max_sync_retries', 8) }},
-            lanBaseUrl: @json(config('offline.lan_base_url')),
-            preferLan: @json((bool) config('offline.prefer_lan') || config('offline.mode') === 'lan_first'),
-            endpoints: {
-                health: '/operator/offline/health',
-                checkUser: '{{ route('operator.scanning.check-user', [], false) }}',
-                pushScans: '/operator/offline/push-scans',
-                pushPrints: '/operator/offline/push-prints',
-                pull: '/operator/offline/pull',
-                pullLocationScans: '/operator/offline/pull-location-scans',
-            },
-        });
-        offlineReady = true;
-        EventOfflineDB.setMeta('event_id', eventId).catch(() => {});
-        EventOfflineConnectivity.onChange((state) => {
-            if (!connectionStatusEl) return;
-            const label = state.online ? ('Status: Online (' + state.mode + ')') : 'Status: Offline';
-            connectionStatusEl.textContent = label;
-            connectionStatusEl.classList.toggle('online', state.online);
-            connectionStatusEl.classList.toggle('offline', !state.online);
-            if (syncModeTextEl) syncModeTextEl.textContent = 'Mode: ' + (state.mode || 'offline');
-        });
-    }
 
     // Queue system for handling rapid scans
     let scanQueue = [];
@@ -429,30 +352,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let lastScannedCode = null;
     let lastScannedTime = 0;
     const DUPLICATE_WINDOW_MS = 1200;
-
-    async function updatePendingUploadsCount() {
-        if (offlineReady && window.EventOfflineOperator) {
-            const pending = await EventOfflineOperator.countPending();
-            if (pendingUploadsCountEl) pendingUploadsCountEl.textContent = pending.toString();
-            if (syncOfflineBtn) syncOfflineBtn.disabled = pending === 0 || !navigator.onLine;
-            return;
-        }
-        if (pendingUploadsCountEl) pendingUploadsCountEl.textContent = '0';
-    }
-
-    function updateConnectionStatus() {
-        if (!connectionStatusEl) return;
-        if (navigator.onLine) {
-            connectionStatusEl.textContent = 'Status: Online';
-            connectionStatusEl.classList.remove('offline');
-            connectionStatusEl.classList.add('online');
-        } else {
-            connectionStatusEl.textContent = 'Status: Offline';
-            connectionStatusEl.classList.remove('online');
-            connectionStatusEl.classList.add('offline');
-        }
-        updatePendingUploadsCount();
-    }
 
     // Function to play success sound - Pleasant ascending chime (shorter for fast scanning)
     function playSuccessSound() {
@@ -591,24 +490,15 @@ document.addEventListener('DOMContentLoaded', function() {
         scanningContainer.style.backgroundColor = '#ffffff';
 
         try {
-            let data;
-            if (offlineReady && window.EventOfflineOperator) {
-                data = await EventOfflineOperator.handleScan(regid, locationId);
-            } else {
-                const response = await fetch('{{ route("operator.scanning.check-user") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({ regid: regid })
-                });
-                data = await response.json();
-            }
-            if (offlineReady) {
-                const pending = await EventOfflineOperator.countPending();
-                if (pendingUploadsCountEl) pendingUploadsCountEl.textContent = pending.toString();
-            }
+            const response = await fetch('{{ route("operator.scanning.check-user") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ regid: regid })
+            });
+            const data = await response.json();
 
             if (data.success) {
                 // Update scan counters
@@ -707,18 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
         lastScannedCode = regid;
         lastScannedTime = now;
 
-        if (offlineReady && window.EventOfflineOperator) {
-            queueOnlineScan(regid);
-        } else {
-            alert('Offline module not loaded. Please refresh the page or download event data from Select Location.');
-        }
-    }
-
-    async function syncOfflineScans() {
-        if (offlineReady && window.EventOfflineOperator) {
-            await EventOfflineOperator.syncNow();
-            await updatePendingUploadsCount();
-        }
+        queueOnlineScan(regid);
     }
 
     if (regidInput) {
@@ -785,23 +664,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    if (syncOfflineBtn) {
-        syncOfflineBtn.addEventListener('click', function() {
-            syncOfflineScans();
-        });
-    }
-
-    window.addEventListener('online', function() {
-        updateConnectionStatus();
-        setTimeout(() => {
-            syncOfflineScans();
-        }, 700);
-    });
-    window.addEventListener('offline', function() {
-        updateConnectionStatus();
-    });
-
-    updateConnectionStatus();
     applyScanningTypeUi();
     if (scanningType === 'camera') {
     html5QrcodeReady.then(() => {

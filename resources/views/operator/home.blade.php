@@ -8,10 +8,6 @@
         <h1 class="card-title">Welcome to Badge System</h1>
     </div>
 
-    <div id="offline-home-status" style="margin: 12px 24px; padding: 12px; background: #f0f9ff; border-radius: 8px; font-size: 13px; color: #1e40af;">
-        Loading offline status...
-    </div>
-
     <p style="margin-top: 20px; color: #6b7280; font-size: 18px;">
         Please select an option to continue
     </p>
@@ -34,26 +30,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script src="{{ asset('js/offline/indexed-db.js') }}"></script>
-<script src="{{ asset('js/offline/connectivity.js') }}"></script>
-<script src="{{ asset('js/offline/sync-engine.js') }}"></script>
-<script>
-document.addEventListener('DOMContentLoaded', async function () {
-    const el = document.getElementById('offline-home-status');
-    if (@json(config('offline.lan_base_url'))) {
-        EventOfflineConnectivity.setLanBaseUrl(@json(config('offline.lan_base_url')));
-    }
-    EventOfflineConnectivity.setPreferLan(@json((bool) config('offline.prefer_lan') || config('offline.mode') === 'lan_first'));
-    EventOfflineConnectivity.startMonitor('/operator/offline/health', 20);
-    EventOfflineConnectivity.onChange(async (state) => {
-        const eventId = await EventOfflineDB.getMeta('event_id');
-        const pending = EventOfflineSyncEngine.countPending ? await EventOfflineSyncEngine.countPending() : 0;
-        el.textContent = (eventId ? 'Event #' + eventId + ' ready offline. ' : 'Download event data from Scanning → Select Location. ') +
-            (state.online ? 'Connected (' + state.mode + ').' : 'Working offline.') +
-            ' Pending sync items: ' + pending + '.';
-    });
-});
-</script>
-@endpush
