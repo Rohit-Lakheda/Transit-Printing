@@ -10,18 +10,20 @@ use App\Models\EBadgeSetting;
 use App\Models\EventSetting;
 use App\Models\MailConfiguration;
 use App\Models\UserDetail;
+use App\Models\WhatsappConfiguration;
 use App\Services\ConfiguredMailerService;
 use App\Services\EBadgePdfService;
+use App\Services\WhatsappSendService;
 use App\Support\PublicStorageUrl;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 class EBadgeSendController extends Controller
 {
     public function __construct(
         protected EBadgePdfService $pdfService,
-        protected ConfiguredMailerService $mailerService
+        protected ConfiguredMailerService $mailerService,
+        protected WhatsappSendService $whatsappService
     ) {
     }
 
@@ -379,9 +381,9 @@ class EBadgeSendController extends Controller
             return [false, 'Cannot send WhatsApp: mobile number missing for RegID ' . $user->RegID . '.'];
         }
 
-        $interaktApiKey = (string) config('services.interakt.api_key');
-        if ($interaktApiKey === '') {
-            return [false, 'Cannot send WhatsApp: INTERAKT_API_KEY is not configured.'];
+        $whatsappConfig = $this->resolveWhatsappConfiguration();
+        if (!$whatsappConfig) {
+            return [false, 'Cannot send WhatsApp: no WhatsApp configuration found. Set it up under E-Badge Settings.'];
         }
 
         $category = Category::where('Category', $user->Category)->first();
@@ -396,44 +398,29 @@ class EBadgeSendController extends Controller
         }
 
         $pdfPayload = $this->buildStoredPdfPayload($user);
-        $pdfUrl = $pdfPayload['url'];
+        $replacements = $this->buildTemplateReplacements($user, $category, $pdfPayload['url']);
 
-        [$countryCode, $phoneNumber] = $this->splitPhoneForInterakt($mobile);
-        $tableValue = trim((string) ($user->Additional1 ?? ''));
-        $tableValue = $tableValue !== '' ? $tableValue : 'N/A';
+        [$ok, $message] = $this->whatsappService->send($whatsappConfig, $user, $replacements);
 
-        $payload = [
-            'countryCode' => $countryCode,
-            'phoneNumber' => $phoneNumber,
-            'callbackData' => (string) config('services.interakt.callback_data', 'ambassador_meet_pdf'),
-            'type' => 'Template',
-            'template' => [
-                'name' => (string) config('services.interakt.template_name', 'ambassador_meet'),
-                'languageCode' => (string) config('services.interakt.language_code', 'en'),
-                'headerValues' => [
-                    $pdfUrl,
-                ],
-                'bodyValues' => [
-                    (string) ($user->Name ?? ''),
-                    $pdfUrl,
-                    $tableValue,
-                ],
-            ],
-        ];
-
-        /** @var \Illuminate\Http\Client\Response $response */
-        $response = Http::withOptions([
-            'verify' => (bool) config('services.interakt.ssl_verify', true),
-        ])->withHeaders([
-            'Authorization' => 'Basic ' . $interaktApiKey,
-            'Content-Type' => 'application/json',
-        ])->post((string) config('services.interakt.base_url', 'https://api.interakt.ai/v1/public/message/'), $payload);
-
-        if (!$response->successful()) {
-            return [false, 'WhatsApp send failed for ' . $user->RegID . ': ' . $response->status() . ' ' . $response->body()];
+        if ($ok) {
+            return [true, $message . ' Sent to ' . $mobile . ' via ' . $whatsappConfig->providerLabel() . '.'];
         }
 
-        return [true, 'WhatsApp message sent successfully to ' . $mobile . '.'];
+        return [false, 'WhatsApp send failed for ' . $user->RegID . ': ' . $message];
+    }
+
+    protected function resolveWhatsappConfiguration(): ?WhatsappConfiguration
+    {
+        $setting = EBadgeSetting::getDefault();
+        if ($setting->whatsapp_configuration_id) {
+            $selected = WhatsappConfiguration::find($setting->whatsapp_configuration_id);
+            if ($selected) {
+                return $selected;
+            }
+        }
+
+        return WhatsappConfiguration::where('is_active', true)->orderByDesc('id')->first()
+            ?? WhatsappConfiguration::orderByDesc('id')->first();
     }
 
     /**
@@ -500,31 +487,4 @@ class EBadgeSendController extends Controller
         return false;
     }
 
-    /**
-     * @return array{0:string,1:string}
-     */
-    protected function splitPhoneForInterakt(string $mobile): array
-    {
-        $defaultCountryCode = (string) config('services.interakt.country_code', '+91');
-        $trimmed = trim($mobile);
-
-        if (str_starts_with($trimmed, '+')) {
-            $digits = preg_replace('/\D+/', '', $trimmed);
-            if (strlen($digits) > 10) {
-                $countryDigits = substr($digits, 0, strlen($digits) - 10);
-                $phoneDigits = substr($digits, -10);
-                return ['+' . $countryDigits, $phoneDigits];
-            }
-            return [$defaultCountryCode, preg_replace('/\D+/', '', $trimmed)];
-        }
-
-        $digits = preg_replace('/\D+/', '', $trimmed);
-        if (strlen($digits) > 10) {
-            $countryDigits = substr($digits, 0, strlen($digits) - 10);
-            $phoneDigits = substr($digits, -10);
-            return ['+' . $countryDigits, $phoneDigits];
-        }
-
-        return [$defaultCountryCode, $digits];
-    }
 }

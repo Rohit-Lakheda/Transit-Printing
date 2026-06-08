@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ImportDataController;
 use App\Http\Controllers\Admin\EBadgeLayoutController;
 use App\Http\Controllers\Admin\EBadgeSendController;
 use App\Http\Controllers\Admin\EBadgeSettingsController;
+use App\Http\Controllers\Admin\WhatsappConfigurationController;
 use App\Http\Controllers\Admin\LeadSettingsController;
 use App\Http\Controllers\Admin\GetDataApiConfigurationController;
 use App\Http\Controllers\Admin\ScanningTypeController;
@@ -116,6 +117,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // E-Badge management
     Route::get('e-badges/settings', [EBadgeSettingsController::class, 'index'])->name('e-badge.settings');
     Route::post('e-badges/settings', [EBadgeSettingsController::class, 'update'])->name('e-badge.settings.update');
+    Route::post('e-badges/whatsapp-config', [WhatsappConfigurationController::class, 'save'])->name('e-badge.whatsapp-config.save');
 
     Route::get('e-badges/layouts', [EBadgeLayoutController::class, 'index'])->name('e-badge.layouts.index');
     Route::get('e-badges/layouts/{category}/edit', [EBadgeLayoutController::class, 'edit'])->name('e-badge.layouts.edit');

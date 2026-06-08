@@ -15,6 +15,7 @@ class EBadgeSetting extends Model
         'email_subject',
         'email_body',
         'mail_configuration_id',
+        'whatsapp_configuration_id',
     ];
 
     public static function getDefault(): self
