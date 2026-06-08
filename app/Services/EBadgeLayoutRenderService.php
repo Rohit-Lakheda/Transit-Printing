@@ -11,7 +11,7 @@ class EBadgeLayoutRenderService
   private const LINE_HEIGHT = 1.15;
   private const MAX_FONT_REDUCTION_MM = 4.0;
   private const FONT_STEP_MM = 0.2;
-  private const MIN_FONT_MM = 1.0;
+  private const MIN_FONT_MM = 7.0;
   private const ELEMENT_GAP_MM = 0.5;
 
   /**
