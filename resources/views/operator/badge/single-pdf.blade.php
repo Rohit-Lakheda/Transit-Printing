@@ -73,6 +73,10 @@
                 $value = $userDetail->$field ?? '';
             }
 
+            if ($field !== 'QRcode' && $value !== '') {
+                $value = \App\Support\BadgeDisplayText::format($value);
+            }
+
             $marginTop = $layout->margin_top ?? ($fieldIndex > 0 ? 2 : 0);
             $marginTopPx = $marginTop * $mmToPx;
             $fontSizePx = null;

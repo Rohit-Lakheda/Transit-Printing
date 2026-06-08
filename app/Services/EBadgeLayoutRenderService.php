@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\EBadgeLayoutSetting;
 use App\Models\UserDetail;
+use App\Support\BadgeDisplayText;
 use Illuminate\Support\Collection;
 
 class EBadgeLayoutRenderService
@@ -112,14 +113,14 @@ class EBadgeLayoutRenderService
     $field = $layout->field_name;
 
     if ($field === 'Category') {
-      return trim((string) ($user->Category ?? ''));
+      return BadgeDisplayText::format((string) ($user->Category ?? ''));
     }
 
     if (str_starts_with($field, 'Instruction')) {
-      return trim((string) ($layout->static_text_value ?? ''));
+      return BadgeDisplayText::format((string) ($layout->static_text_value ?? ''));
     }
 
-    return trim((string) ($user->{$field} ?? ''));
+    return BadgeDisplayText::format((string) ($user->{$field} ?? ''));
   }
 
   protected function normalizeFontFamily(?string $font): string

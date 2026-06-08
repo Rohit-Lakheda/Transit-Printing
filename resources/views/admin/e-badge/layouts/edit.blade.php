@@ -567,9 +567,10 @@ function renderPreview() {
             }
         } else {
             div.style.fontSize = ((el.font_size || 3.7) * mmToPx) + 'px';
-            div.textContent = el.field_name.startsWith('Instruction')
+            const previewValue = el.field_name.startsWith('Instruction')
                 ? (el.static_text_value || defaultPreviewText[el.field_name] || el.field_name)
                 : (defaultPreviewText[el.field_name] || el.field_name);
+            div.textContent = String(previewValue).toLocaleUpperCase();
         }
         preview.appendChild(div);
     });

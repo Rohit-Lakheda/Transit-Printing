@@ -111,6 +111,10 @@
             } else {
                 $value = $userDetail->$field ?? '';
             }
+
+            if ($field !== 'QRcode' && $value !== '') {
+                $value = \App\Support\BadgeDisplayText::format($value);
+            }
             
             // Calculate margin top (line spacing) - always apply margin_top from layout
             $marginTop = $layout->margin_top ?? ($index > 0 ? 2 : 0);

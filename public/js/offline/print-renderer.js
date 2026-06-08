@@ -5,9 +5,16 @@
     const MM_TO_PX = 3.779527559;
     let printFrame = null;
 
+    function formatBadgeText(text) {
+        if (text == null) {
+            return '';
+        }
+        return String(text).trim().toLocaleUpperCase();
+    }
+
     function escapeHtml(text) {
         const div = document.createElement('div');
-        div.textContent = text == null ? '' : String(text);
+        div.textContent = formatBadgeText(text);
         return div.innerHTML;
     }
 

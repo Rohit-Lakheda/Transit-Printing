@@ -659,7 +659,7 @@
                     textContent = element.preview_text || getDefaultPreviewText(element.field_name);
                 }
                 
-                div.textContent = textContent;
+                div.textContent = String(textContent).toLocaleUpperCase();
                 // Allow wrapping similar to print, but clip at badge boundary
                 div.style.whiteSpace = 'normal';
                 div.style.wordBreak = 'break-word';
