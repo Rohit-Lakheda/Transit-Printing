@@ -10,17 +10,22 @@ use Symfony\Component\Mime\Email;
 
 class ConfiguredMailerService
 {
-    public function sendHtml(
-        string $toEmail,
-        string $subject,
-        string $htmlBody,
-        MailConfiguration $config,
-        array $attachments = []
-    ): void {
+    /**
+     * Symfony EsmtpTransport TLS flag:
+     * - true  = implicit SSL/SMTPS (typically port 465)
+     * - false = plain TCP, then STARTTLS upgrade (typically port 587)
+     * - null  = no encryption
+     */
+    public static function createTransport(MailConfiguration $config): EsmtpTransport
+    {
         $transport = new EsmtpTransport(
             $config->host,
             $config->port,
-            $config->encryption === 'ssl' || $config->encryption === 'tls'
+            match ($config->encryption) {
+                'ssl' => true,
+                'tls' => false,
+                default => null,
+            }
         );
 
         if ($config->use_auth && $config->username) {
@@ -30,7 +35,17 @@ class ConfiguredMailerService
             }
         }
 
-        $mailer = new Mailer($transport);
+        return $transport;
+    }
+
+    public function sendHtml(
+        string $toEmail,
+        string $subject,
+        string $htmlBody,
+        MailConfiguration $config,
+        array $attachments = []
+    ): void {
+        $mailer = new Mailer(self::createTransport($config));
         $fromAddress = $config->from_address ?: config('mail.from.address');
         $fromName = $config->from_name ?: config('mail.from.name');
 

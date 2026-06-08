@@ -46,9 +46,10 @@
                             <select name="encryption" class="form-select">
                                 @php $enc = old('encryption', optional($activeMailConfig)->encryption); @endphp
                                 <option value="" {{ $enc === null || $enc === '' ? 'selected' : '' }}>None</option>
-                                <option value="ssl" {{ $enc === 'ssl' ? 'selected' : '' }}>SSL</option>
-                                <option value="tls" {{ $enc === 'tls' ? 'selected' : '' }}>TLS</option>
+                                <option value="tls" {{ $enc === 'tls' ? 'selected' : '' }}>TLS (STARTTLS, port 587)</option>
+                                <option value="ssl" {{ $enc === 'ssl' ? 'selected' : '' }}>SSL (SMTPS, port 465)</option>
                             </select>
+                            <small class="text-muted">For Elastic Email use TLS with port 587.</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">From Address</label>

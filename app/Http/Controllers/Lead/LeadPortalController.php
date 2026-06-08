@@ -43,20 +43,9 @@ class LeadPortalController extends Controller
             return;
         }
 
-        $transport = new \Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport(
-            $config->host,
-            $config->port,
-            $config->encryption === 'ssl' || $config->encryption === 'tls'
+        $symfonyMailer = new \Symfony\Component\Mailer\Mailer(
+            \App\Services\ConfiguredMailerService::createTransport($config)
         );
-
-        if ($config->use_auth && $config->username) {
-            $transport->setUsername($config->username);
-            if ($config->password) {
-                $transport->setPassword($config->password);
-            }
-        }
-
-        $symfonyMailer = new \Symfony\Component\Mailer\Mailer($transport);
         $fromAddress = $config->from_address ?: config('mail.from.address');
         $fromName = $config->from_name ?: config('mail.from.name');
 
