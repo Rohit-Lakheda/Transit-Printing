@@ -14,6 +14,7 @@ class EBadgeLayoutRenderService
   private const FONT_STEP_MM = 0.2;
   private const MIN_FONT_MM = 7.0;
   private const ELEMENT_GAP_MM = 0.5;
+  private const HORIZONTAL_PADDING_MM = 2.0;
 
   /**
    * @param  Collection<int, EBadgeLayoutSetting>  $layoutSettings
@@ -81,9 +82,13 @@ class EBadgeLayoutRenderService
   protected function buildTextElement(EBadgeLayoutSetting $layout, string $value, float $pageWidthMm): array
   {
     $leftMm = (float) ($layout->margin_left ?? 0);
+    $rightMm = (float) ($layout->margin_right ?? 0);
+    $maxWidthMm = max(5, $pageWidthMm - $leftMm - $rightMm);
     $widthMm = (float) ($layout->width ?? 0);
     if ($widthMm <= 0) {
-      $widthMm = max(5, $pageWidthMm - $leftMm);
+      $widthMm = $maxWidthMm;
+    } else {
+      $widthMm = min($widthMm, $maxWidthMm);
     }
 
     $fontSizeMm = (float) ($layout->font_size ?? 3.7);
@@ -143,10 +148,11 @@ class EBadgeLayoutRenderService
       $originalFont = (float) $element['original_font_size_mm'];
       $minFont = max(self::MIN_FONT_MM, $originalFont - self::MAX_FONT_REDUCTION_MM);
       $font = $originalFont;
-      $widthMm = (float) $element['width_mm'];
+      $widthMm = $this->effectiveTextWidthMm((float) $element['width_mm']);
       $value = (string) $element['value'];
+      $fontWeight = (string) ($element['font_weight'] ?? 'normal');
 
-      while ($font > $minFont && $this->estimateLineCount($value, $font, $widthMm) > 1) {
+      while ($font > $minFont && $this->estimateLineCount($value, $font, $widthMm, $fontWeight) > 1) {
         $font = round($font - self::FONT_STEP_MM, 2);
       }
 
@@ -154,16 +160,17 @@ class EBadgeLayoutRenderService
         $font = $minFont;
       }
 
-      $lines = $this->estimateLineCount($value, $font, $widthMm);
+      $lines = $this->estimateLineCount($value, $font, $widthMm, $fontWeight);
       $element['font_size_mm'] = $font;
       $element['lines'] = $lines;
-      $element['height_mm'] = $font * self::LINE_HEIGHT * $lines;
+      $element['height_mm'] = $font * self::LINE_HEIGHT * $lines
+        + max(0, $lines - 1) * 0.35;
     }
     unset($element);
   }
 
     /**
-     * Push elements below any multi-line field (after max font reduction) so nothing overlaps.
+     * Push elements below any field that extends past its layout slot so nothing overlaps.
      *
      * @param  array<int, array<string, mixed>>  $elements
      */
@@ -182,16 +189,13 @@ class EBadgeLayoutRenderService
             return ($a['sequence'] ?? 0) <=> ($b['sequence'] ?? 0);
         });
 
-        for ($pass = 0; $pass < 8; $pass++) {
+        for ($pass = 0; $pass < 16; $pass++) {
             $changed = false;
 
             for ($i = 0; $i < count($elements) - 1; $i++) {
-                $current = $elements[$i];
-                if (($current['type'] ?? '') !== 'text' || (int) ($current['lines'] ?? 1) <= 1) {
-                    continue;
-                }
-
-                $bottomMm = (float) $current['top_mm'] + (float) ($current['height_mm'] ?? 0) + self::ELEMENT_GAP_MM;
+                $bottomMm = (float) $elements[$i]['top_mm']
+                    + (float) ($elements[$i]['height_mm'] ?? 0)
+                    + self::ELEMENT_GAP_MM;
 
                 for ($j = $i + 1; $j < count($elements); $j++) {
                     if ((float) $elements[$j]['top_mm'] < $bottomMm) {
@@ -221,8 +225,17 @@ class EBadgeLayoutRenderService
         unset($element);
     }
 
-  protected function estimateLineCount(string $text, float $fontSizeMm, float $widthMm): int
+  protected function effectiveTextWidthMm(float $widthMm): float
   {
+    return max(1, $widthMm - self::HORIZONTAL_PADDING_MM);
+  }
+
+  protected function estimateLineCount(
+    string $text,
+    float $fontSizeMm,
+    float $widthMm,
+    string $fontWeight = 'normal'
+  ): int {
     $text = trim($text);
     if ($text === '') {
       return 1;
@@ -232,8 +245,9 @@ class EBadgeLayoutRenderService
       return 1;
     }
 
-    // Approximate average glyph width for PDF core fonts.
-    $avgCharWidthMm = $fontSizeMm * 0.52;
+    // Conservative estimate for DomPDF wrapping (bold / serif text is wider).
+    $widthFactor = $fontWeight === 'bold' ? 0.62 : 0.56;
+    $avgCharWidthMm = $fontSizeMm * $widthFactor;
     $maxCharsPerLine = max(1, (int) floor($widthMm / $avgCharWidthMm));
 
     $words = preg_split('/\s+/u', $text) ?: [];
