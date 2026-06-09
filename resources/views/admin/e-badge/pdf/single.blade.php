@@ -135,18 +135,26 @@
                     </table>
                 </div>
             @elseif(($element['type'] ?? '') === 'text')
+                @php
+                    $lineHeightMm = round((float) ($element['font_size_mm'] ?? 3.7) * 1.15, 3);
+                    $wrappedLines = $element['wrapped_lines'] ?? [$element['value'] ?? ''];
+                @endphp
                 <div class="item"
                      style="
                         top: {{ $element['top_mm'] }}mm;
                         left: {{ $element['left_mm'] }}mm;
                         width: {{ $element['width_mm'] }}mm;
+                        min-height: {{ $element['height_mm'] }}mm;
                         text-align: {{ $element['text_align'] ?? 'left' }};
                         font-family: '{{ $element['font_family'] ?? 'Helvetica' }}', sans-serif;
                         font-weight: {{ $element['font_weight'] ?? 'normal' }};
                         color: {{ $element['color'] ?? '#000000' }};
                         font-size: {{ $element['font_size_mm'] }}mm;
+                        line-height: {{ $lineHeightMm }}mm;
                      ">
-                    {{ $element['value'] }}
+                    @foreach($wrappedLines as $line)
+                        @if(!$loop->first)<br>@endif{{ $line }}
+                    @endforeach
                 </div>
             @endif
         @endforeach
