@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\PrintingReportController;
 use App\Http\Controllers\Admin\UniquePrintController;
 use App\Http\Controllers\Admin\EventLogoController;
 use App\Http\Controllers\Admin\ImportDataController;
+use App\Http\Controllers\Admin\RegisteredUserController;
 use App\Http\Controllers\Admin\EBadgeLayoutController;
 use App\Http\Controllers\Admin\EBadgeSendController;
 use App\Http\Controllers\Admin\EBadgeSettingsController;
@@ -80,6 +81,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::get('import-data/template', [ImportDataController::class, 'downloadTemplate'])->name('import-data.template');
     Route::post('import-data/import', [ImportDataController::class, 'import'])->name('import-data.import');
     Route::get('import-data/export', [ImportDataController::class, 'exportRegisteredData'])->name('import-data.export');
+
+    Route::get('registered-users', [RegisteredUserController::class, 'index'])->name('registered-users.index');
+    Route::get('registered-users/{registeredUser}/edit', [RegisteredUserController::class, 'edit'])->name('registered-users.edit');
+    Route::put('registered-users/{registeredUser}', [RegisteredUserController::class, 'update'])->name('registered-users.update');
 
     // Locations
     Route::resource('locations', LocationController::class);

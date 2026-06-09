@@ -917,6 +917,7 @@
                             </button>
                             <ul class="admin-dropdown-menu">
                                 <li><a href="{{ route('admin.event-logo.index') }}">Event Logo</a></li>
+                                <li><a href="{{ route('admin.registered-users.index') }}">Registered Users</a></li>
                                 <li><a href="{{ route('admin.import-data.index') }}">Import Data</a></li>
                                 <li><a href="{{ route('admin.api-configurations.index') }}">Post Data API Configuration</a></li>
                                 <li><a href="{{ route('admin.get-data-api-configurations.index') }}">Get Data API Configuration</a></li>

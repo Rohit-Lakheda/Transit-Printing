@@ -8,10 +8,16 @@ use App\Models\Category;
 use App\Models\ApiConfiguration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Services\EBadgeDispatchService;
 use App\Services\RegIdGenerator;
 
 class UserRegistrationController extends Controller
 {
+    public function __construct(
+        protected EBadgeDispatchService $ebadgeDispatch
+    ) {
+    }
+
     /**
      * Register user via API
      */
@@ -87,6 +93,7 @@ class UserRegistrationController extends Controller
         // Create user
         try {
             $user = UserDetail::create($mappedData);
+            $ebadgeDispatch = $this->ebadgeDispatch->sendOnApiRegistration($user);
 
             return response()->json([
                 'success' => true,
@@ -96,7 +103,8 @@ class UserRegistrationController extends Controller
                     'RegID' => $user->RegID,
                     'Name' => $user->Name,
                     'Category' => $user->Category,
-                ]
+                ],
+                'ebadge_dispatch' => $ebadgeDispatch,
             ], 201);
         } catch (\Exception $e) {
             return response()->json([

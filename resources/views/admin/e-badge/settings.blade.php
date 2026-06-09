@@ -47,6 +47,19 @@
                     </div>
 
                     <div class="form-group">
+                        <label class="form-check-label" style="display:flex;align-items:center;gap:8px;">
+                            <input type="checkbox" name="auto_send_email_on_api_registration" value="1" {{ old('auto_send_email_on_api_registration', $setting->auto_send_email_on_api_registration ?? true) ? 'checked' : '' }}>
+                            Automatically send e-badge email when data arrives via API
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-check-label" style="display:flex;align-items:center;gap:8px;">
+                            <input type="checkbox" name="auto_send_whatsapp_on_api_registration" value="1" {{ old('auto_send_whatsapp_on_api_registration', $setting->auto_send_whatsapp_on_api_registration ?? true) ? 'checked' : '' }}>
+                            Automatically send e-badge WhatsApp when data arrives via API
+                        </label>
+                    </div>
+
+                    <div class="form-group">
                         <label class="form-label">Email Subject</label>
                         <input type="text" name="email_subject" class="form-control" value="{{ old('email_subject', $setting->email_subject) }}" required>
                     </div>
